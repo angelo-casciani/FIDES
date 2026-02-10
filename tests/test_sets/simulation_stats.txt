@@ -1,3 +1,0 @@
-sim_with_time: 127
-sim_with_number_products: 111
-event_prediction: 62

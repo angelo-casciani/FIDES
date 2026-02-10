@@ -156,6 +156,13 @@ EOF
                     echo "Extractor container failed to start. Check logs with:"
                     echo "   $DOCKER_CMD logs extractor-service"
                 fi
+
+                if $DOCKER_CMD ps | grep -q lego-chatbot; then
+                    echo "Chatbot container is running on http://127.0.0.1:7860"
+                else
+                    echo "Chatbot container failed to start. Check logs with:"
+                    echo "   $DOCKER_CMD logs lego-chatbot"
+                fi
             else
                 echo "docker-compose.yml not found"
             fi
@@ -183,5 +190,5 @@ echo ""
 echo "Next steps:"
 echo "  1. Set up your .env file with API keys and UPPAAL_LICENSE_KEY (if not done)"
 echo "  2. Run 'pip install -r requirements.txt' if not already done"
-echo "  3. Run 'python src/main.py' to start the framework on CLI or 'python src/chatbot.py' to start the GUI."
+echo "  3. Run 'python src/chatbot.py' to start the GUI."
 echo ""

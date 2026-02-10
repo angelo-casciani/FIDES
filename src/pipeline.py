@@ -17,7 +17,6 @@ except ImportError:
     LOCAL_MODEL_SUPPORT = False
 
 import simulation_interface as factory_interface
-from oracle import AnswerVerificationOracle
 import uppaal_interface
 from utility import log_to_file, retrieve_automata, retrieve_factory, load_csv_questions, retrieve_factory_with_failure, load_txt_questions
 import pddl_interface
@@ -750,97 +749,3 @@ class LLMPipeline:
                     print(response)
                     print()
 
-
-    def evaluate_performance(self, test_filename, info_run):
-        questions = load_csv_questions(test_filename)
-        oracle = AnswerVerificationOracle(info_run)
-
-        if test_filename == 'routing.csv':
-            oracle.set_test_type('routing')
-        elif test_filename == 'simulation.csv':
-            oracle.set_test_type('simulation')
-        elif test_filename == 'verification.csv':
-            oracle.set_test_type('verification')
-        elif test_filename == 'factory_info.csv':
-            oracle.set_test_type('factory_info')
-        elif test_filename == 'process_mining.csv':
-            oracle.set_test_type('process_mining')
-        elif test_filename == 'hybrid.csv':
-            oracle.set_test_type('hybrid')
-
-        count = 0
-        prompt, answer = '', ''
-        for el in questions:
-            question = el[0]
-            expected_answer = el[1]
-            oracle.add_question_expected_answer_pair(question, expected_answer)
-
-            if test_filename == 'simulation.csv':
-                self.request_type = "factory_simulation"
-                prompt, answer = self._produce_answer_simulation(question, 'evaluation-simulation')
-            elif test_filename == 'verification.csv':
-                prompt, answer = self._produce_answer_verification(question, 'evaluation-verification')
-            elif test_filename == 'routing.csv':
-                prompt, answer = self._produce_answer_gateway(question, 'routing')
-            elif test_filename == 'factory_info.csv':
-                prompt, answer = self._produce_answer_gateway(question, 'factory_info')
-            elif test_filename == 'process_mining.csv':
-                prompt, answer = self._produce_answer_process_mining(question, 'evaluation-process_mining')
-            elif test_filename == 'hybrid.csv':
-                prompt, answer = self._produce_answer_hybrid(question, 'evaluation-hybrid')
-            oracle.verify_answer(prompt, question, answer)
-            count += 1
-            print(f'Processing answer for question {count} of {len(questions)}...')
-
-        print('Evaluation process completed. Check the output file.')
-        oracle.write_results_to_file()
-
-
-    def evaluate_qualitative_hybrid(self, test_filename, info_run):
-        print(f"Starting hybrid qualitative evaluation from: {test_filename}")
-        
-        log_dir = os.path.join(os.path.dirname(__file__), "..", "tests", "evaluation")
-        os.makedirs(log_dir, exist_ok=True)
-        log_filename = f"qualitative_results_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
-        log_path = os.path.join(log_dir, log_filename)
-        
-        questions = load_txt_questions(test_filename)
-        
-        total_questions = len(questions)
-        print(f"{total_questions} question found. Logging into: {log_path}")
-        
-        with open(log_path, 'w', encoding='utf-8') as log_file:
-            log_file.write('QUALITATIVE EVALUATION INFO\n\n')
-            for key, value in info_run.items():
-                log_file.write(f"{key}: {value}\n")
-            log_file.write(f"Test file: {test_filename}\n")
-            log_file.write('\n' + '=' * 80 + '\n\n')
-            
-            for i, question in enumerate(questions):
-                print(f"Elaborating question {i+1} of {total_questions}...")
-                log_file.write(f"QUESTION {i+1}/{total_questions}: {question}\n\n")
-                
-                buffer = io.StringIO()
-                
-                final_answer = ""
-                intermediate_logs = ""
-                
-                with redirect_stdout(buffer):
-                    try:
-                        self.request_type = "hybrid"
-                        prompt, final_answer = self._produce_answer_hybrid(question, 'live')
-
-                        
-                    except Exception as e:
-                        print(f"ERROR DURING THE ELABORATION OF THE QUESTION: {e}")
-                        final_answer = f"Execution failer with error: {e}"
-                
-                intermediate_logs = buffer.getvalue()
-                
-                log_file.write("--- INTERMEDIATE LOGS (STDOUT) ---\n")
-                log_file.write(intermediate_logs)
-                log_file.write("\n--- MODEL FINAL ANSWER ---\n")
-                log_file.write(final_answer)
-                log_file.write("\n\n" + '#' * 80 + "\n\n")
-
-        print(f"QUALITATIVE EVALUATION COMPLETED. Results are in: {log_path}")
