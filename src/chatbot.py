@@ -27,11 +27,7 @@ SEED = 10
 MAX_RESTART_ATTEMPTS = 3
 RESTART_DELAY = 5  # seconds
 warnings.filterwarnings('ignore')
-
-if os.path.exists('/app'): # For Docker, otherwise use relative path
-    LOG_DIR = '/app/log'
-else:
-    LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'log')
+LOG_DIR = '/app/log'
 os.makedirs(LOG_DIR, exist_ok=True)
 
 logging.basicConfig(
@@ -127,7 +123,8 @@ class GradioHandler:
                     match = re.search(r"saved at:\s*(\S+)", result)
                     if match:
                         path = match.group(1).rstrip(".")
-                        yield [{"role": "assistant", "content": result}, {"role": "assistant", "content": (path,)}]
+                        yield {"role": "assistant", "content": result}
+                        yield {"role": "assistant", "content": gr.FileData(path=path, mime_type="image/png")}
                     else:
                         yield {"role": "assistant", "content": result}
                 else:
@@ -170,7 +167,8 @@ demo = gr.ChatInterface(
 • **Verification:** Temporal property checking on factory automaton<br>
 • **Process Mining:** Process discovery (Petri nets), conformance checking, performance analysis, log filtering<br>
 • **Hybrid Reasoning:** Multi-step workflows combining simulation, verification, and failure analysis<br><br>
-*Note: Use actual station names (e.g., station11, station21, station41, ...)*<br><br>"""
+*Note: Use actual station names (e.g., station11, station21, station41, ...)*<br><br>
+*Always use **seconds** as unit of time.*<br><br>"""
 )
 
 def launch_chatbot_with_fallback():
