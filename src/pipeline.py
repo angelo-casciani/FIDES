@@ -2,8 +2,6 @@ import datetime
 import json
 import os
 import re
-import io
-from contextlib import redirect_stdout
 
 from langchain.chat_models import init_chat_model
 from langchain_core.prompts import PromptTemplate
@@ -24,6 +22,7 @@ import tempfile
 import failure_maintenance
 import ast
 import process_mining
+from automaton_learning import AutomatonLearner
 
 
 def clean_json_block(text: str) -> str:
@@ -147,6 +146,37 @@ class LLMPipeline:
             print("Digital twin with failure parameters found on disk.")
             self.extracted_failure = True
         print("Digital twins for simulation and predictive maintenance ready!")
+        self._ensure_skg_exists()
+
+    def _ensure_skg_exists(self):
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        automaton_dir = os.path.join(base_dir, "data", "automaton")
+        os.makedirs(automaton_dir, exist_ok=True)
+
+        existing_xml = [f for f in os.listdir(automaton_dir) if f.endswith(".xml")]
+        if existing_xml:
+            return
+
+        try:
+            learner = AutomatonLearner()
+        except FileNotFoundError:
+            print("Warning: LSHA not available. SKG extraction skipped.")
+            return
+
+        xes_path = self.process_mining_module.path_to_log
+        output_name = os.path.basename(xes_path)
+        if output_name.endswith(".csv"):
+            xes_path = self.process_mining_module.conversion_from_csv_to_xes()
+            output_name = output_name.replace(".csv", "_skg.xml")
+        else:
+            output_name = output_name.replace(".xes", "_skg.xml")
+
+        print("Extracting SKG because none was found on disk...")
+        learner.learn_automaton(
+            xes_path=xes_path,
+            output_name=output_name,
+            window_minutes=5
+        )
 
 
     def _initialize_local_model(self, model_id, model_family):
@@ -275,7 +305,16 @@ class LLMPipeline:
             factory_model = os.path.join(os.path.dirname(__file__), '..', 'data', 'parameters', 'digital_twin.json')
             with open(factory_model, 'r') as factory_file:
                 factory_model = json.load(factory_file)
-            context = factory_model
+            filtered_activities = {
+                name: data
+                for name, data in factory_model.get('activities', {}).items()
+                if not name.endswith('_pass')
+            }
+            stations = list(filtered_activities.keys())
+            context = dict(factory_model)
+            context['activities_all'] = factory_model.get('activities', {})
+            context['activities'] = filtered_activities
+            context['stations'] = stations
         invoke_payload = {"question": question,
                         "context": context,
                         "system_message": sys_mess}
@@ -529,7 +568,7 @@ class LLMPipeline:
                 return prompt, "{}"
             elif action == 'process_discovery':
                 net, initial_marking, final_marking, net_path = self.process_mining_module.discovery()
-                #self.process_mining_module.view_petri_net(net, initial_marking, final_marking)
+                # Skip view_petri_net - not available in headless/Docker environment
                 nl_output = f"I discovered the process model. The Petri net has been saved at: {net_path}."
             elif action == 'conformance_checking':
                 log = self.process_mining_module.load_log()
@@ -748,4 +787,3 @@ class LLMPipeline:
                 for response in self._generate_response(query, current_datetime, info_run, chatbot=False):
                     print(response)
                     print()
-

@@ -1,22 +1,9 @@
-import os
-import psutil
-import tempfile
-import pandas as pd
-
-# Work around psutil pid=0 on some container runtimes during pm4py import.
-_psutil_process = psutil.Process
-
-def _safe_psutil_process(pid=None):
-    if pid == 0:
-        pid = 1
-    return _psutil_process(pid)
-
-psutil.Process = _safe_psutil_process
 import pm4py
-psutil.Process = _psutil_process
-
+import pandas as pd
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
+import tempfile
+import os
 from datetime import datetime
 from extractor import Extractor
 

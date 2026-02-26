@@ -1,12 +1,25 @@
 import gradio as gr
+import os
+import sys
+
+try:
+    import psutil
+    original_process_init = psutil.Process.__init__
+    
+    def patched_process_init(self, pid=None):
+        if pid == 0:
+            pid = os.getpid()
+        original_process_init(self, pid)
+    
+    psutil.Process.__init__ = patched_process_init
+except Exception:
+    pass  
 from pipeline import LLMPipeline
 from argparse import ArgumentParser
 from dotenv import load_dotenv
 import warnings
 from utility import *
-import os
 import re
-import sys
 import time
 import traceback
 import logging
@@ -27,8 +40,13 @@ SEED = 10
 MAX_RESTART_ATTEMPTS = 3
 RESTART_DELAY = 5  # seconds
 warnings.filterwarnings('ignore')
-LOG_DIR = '/app/log'
+
+if os.path.exists('/app'): # For Docker, otherwise use relative path
+    LOG_DIR = '/app/log'
+else:
+    LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'log')
 os.makedirs(LOG_DIR, exist_ok=True)
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,6 +58,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+interaction_logger = logging.getLogger("chatbot_interactions")
+interaction_logger.setLevel(logging.INFO)
+interaction_handler = logging.FileHandler(os.path.join(LOG_DIR, 'chatbot_interactions.log'))
+interaction_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+interaction_logger.addHandler(interaction_handler)
+interaction_logger.propagate = False
 
 def stop_containers():
     try:
@@ -60,6 +84,7 @@ def parse_arguments():
     parser.add_argument('--modality', type=str, default='live', help='Modality to use between: evaluation-simulation, evaluation-verification, evaluation-routing, live')
     parser.add_argument('--extracted_model', type=bool, default=False, help='True if already exists the file digital_twin.json. Default False')
     parser.add_argument('--extracted_model_failure', type=bool, default=False, help='True if already exists the file digital_twin_with_failure.json. Default False')
+    parser.add_argument('--ensure_skg', type=bool, default=True, help='Ensure an SKG automaton exists (runs LSHA if needed)')
     args = parser.parse_args()
     return args
 
@@ -82,9 +107,13 @@ class GradioHandler:
                 max_new_tokens = args.max_new_tokens
                 extracted_model = args.extracted_model
                 extracted_model_failure = args.extracted_model_failure
+                ensure_skg = args.ensure_skg
                 self.initialization_message = "Initializing system and digital twins..."
                 logger.info("Starting chatbot initialization")
                 self.chain = LLMPipeline(model_id_gateway, model_id_simulation, model_id_verification, HF_AUTH, max_new_tokens, extracted_model, extracted_model_failure)
+                if ensure_skg and hasattr(self.chain, "_ensure_skg_exists"):
+                    logger.info("Ensuring SKG automaton exists...")
+                    self.chain._ensure_skg_exists()
                 self.initialization_message = None
 
                 self.initialized = True
@@ -167,7 +196,7 @@ demo = gr.ChatInterface(
 • **Verification:** Temporal property checking on factory automaton<br>
 • **Process Mining:** Process discovery (Petri nets), conformance checking, performance analysis, log filtering<br>
 • **Hybrid Reasoning:** Multi-step workflows combining simulation, verification, and failure analysis<br><br>
-*Note: Use actual station names (e.g., station11, station21, station41, ...)*<br><br>
+*Note: Use actual station names (e.g., station11, station21, station41, ...)*<br><br>"
 *Always use **seconds** as unit of time.*<br><br>"""
 )
 

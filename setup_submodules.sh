@@ -11,6 +11,99 @@ echo "Submodules initialized and updated"
 echo ""
 
 echo "============================================="
+echo "Setting up LSHA Automaton Learner"
+echo "============================================="
+echo ""
+
+if [ -d "src/lsha" ]; then
+    echo "LSHA submodule found"
+    
+    # Check if it's a proper submodule
+    if git config --file .gitmodules --get-regexp 'submodule.src/lsha' > /dev/null 2>&1; then
+        echo "LSHA is properly configured as a submodule"
+        
+        # Set up LSHA conda environment
+        if command -v conda &> /dev/null; then
+            echo "Conda found. Setting up LSHA conda environment..."
+            
+            # Check if environment is already created
+            if conda env list | grep -q "^lsha "; then
+                echo "LSHA conda environment already exists"
+                echo "To update it, run: conda env update -f src/lsha/environment.yml --prune"
+            else
+                echo "Creating LSHA conda environment from src/lsha/environment.yml..."
+                conda env create -f src/lsha/environment.yml
+                echo "LSHA conda environment created successfully"
+                echo ""
+                echo "To activate it later, run: conda activate lsha"
+            fi
+        else
+            echo "WARNING: conda not found in PATH"
+            echo "LSHA requires a separate conda environment due to dependency conflicts"
+            echo "Please install conda and run the following to set up LSHA:"
+            echo "   conda env create -f src/lsha/environment.yml"
+            echo "Install conda from: https://docs.conda.io/en/latest/miniconda.html"
+        fi
+        
+        # Verify LSHA dependencies are documented
+        if [ -f "src/lsha/requirements.txt" ]; then
+            echo "LSHA has additional dependencies (see src/lsha/requirements.txt)"
+        fi
+    else
+        echo "WARNING: LSHA directory exists but is not a submodule"
+        echo "Attempting to convert to submodule..."
+        
+        # Backup existing directory
+        if [ -d "src/lsha.backup" ]; then
+            rm -rf src/lsha.backup
+        fi
+        cp -r src/lsha src/lsha.backup
+        echo "Backup created at src/lsha.backup"
+        
+        # Remove and re-add as submodule
+        rm -rf src/lsha
+        git submodule add -b xes_extension https://github.com/LesLivia/lsha.git src/lsha
+        git submodule update --init --recursive src/lsha
+        
+        if [ -f "src/lsha/README.md" ]; then
+            echo "LSHA successfully converted to submodule"
+            echo "You can remove backup with: rm -rf src/lsha.backup"
+        else
+            echo "ERROR: Failed to convert LSHA to submodule"
+            exit 1
+        fi
+    fi
+else
+    echo "LSHA submodule not found"
+    echo "Adding LSHA as submodule..."
+    git submodule add -b xes_extension https://github.com/LesLivia/lsha.git src/lsha
+    git submodule update --init --recursive src/lsha
+    
+    if [ -f "src/lsha/README.md" ]; then
+        echo "LSHA submodule added successfully"
+        
+        # Set up LSHA conda environment
+        if command -v conda &> /dev/null; then
+            echo "Setting up LSHA conda environment..."
+            if conda env list | grep -q "^lsha "; then
+                echo "LSHA conda environment already exists"
+            else
+                echo "Creating LSHA conda environment from src/lsha/environment.yml..."
+                conda env create -f src/lsha/environment.yml
+                echo "LSHA conda environment created successfully"
+            fi
+        else
+            echo "WARNING: conda not found - LSHA requires conda for dependency isolation"
+            echo "Please install conda and run: conda env create -f src/lsha/environment.yml"
+        fi
+    else
+        echo "ERROR: Failed to add LSHA submodule"
+        exit 1
+    fi
+fi
+echo ""
+
+echo "============================================="
 echo "Setting up Fast Downward Planner"
 echo "============================================="
 echo ""
@@ -156,13 +249,6 @@ EOF
                     echo "Extractor container failed to start. Check logs with:"
                     echo "   $DOCKER_CMD logs extractor-service"
                 fi
-
-                if $DOCKER_CMD ps | grep -q lego-chatbot; then
-                    echo "Chatbot container is running on http://127.0.0.1:7860"
-                else
-                    echo "Chatbot container failed to start. Check logs with:"
-                    echo "   $DOCKER_CMD logs lego-chatbot"
-                fi
             else
                 echo "docker-compose.yml not found"
             fi
@@ -182,13 +268,33 @@ echo "============================================="
 echo ""
 echo "Submodules initialized:"
 echo "  ✓ Fast Downward (PDDL Planner) at src/downward"
+if [ -d "src/lsha" ] && [ -f "src/lsha/README.md" ]; then
+    echo "  ✓ LSHA (Automaton Learning) at src/lsha"
+    if conda env list | grep -q "^lsha "; then
+        echo "    └─ Conda environment 'lsha' successfully created"
+    else
+        echo "    └─ WARNING: Conda environment 'lsha' not found"
+    fi
+else
+    echo "  ⚠ LSHA initialization failed"
+fi
+echo ""
+echo "Python Environments:"
+echo "  ✓ Main venv (.venv) - for framework components"
+echo "  ✓ LSHA conda (lsha) - for automaton learning (isolated dependencies)"
 echo ""
 echo "Components:"
 echo "  ✓ DTLogExtSim Extractor at src/DTLogExtSim/Extractor"
+echo "  ✓ SKG Automaton Learning with LSHA (data/automaton/)"
 echo "  ✓ UPPAAL (Verification Engine) with Docker support"
 echo ""
 echo "Next steps:"
-echo "  1. Set up your .env file with API keys and UPPAAL_LICENSE_KEY (if not done)"
-echo "  2. Run 'pip install -r requirements.txt' if not already done"
-echo "  3. Run 'python src/chatbot.py' to start the GUI."
+echo "  1. Activate main venv:       source .venv/bin/activate"
+echo "  2. Install dependencies:     pip install -r requirements.txt"
+echo "  3. Set up .env with API keys and UPPAAL_LICENSE_KEY (if not done)"
+echo "  4. Start framework:          python src/main.py (CLI) or python src/chatbot.py (GUI)"
+echo ""
+echo "For LSHA automaton learning:"
+echo "  - Activate LSHA environment: conda activate lsha"
+echo "  - It is automatically invoked by automaton_learning.py via subprocess"
 echo ""

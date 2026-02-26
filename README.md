@@ -29,13 +29,14 @@ A more comprehensive video demonstration showcasing the tool in the Lego factory
 ├── data              # extracted automaton and simulation parameters
 |   ├── automaton     # automaton files
 |   |   ├── factory_automaton.json
-|   |   └── lego_SKG_item-10_no_doubles.xml
+|   |   └── event_log_250905_skg.xml
 |   └── parameters    # digital twin parameters
 |       ├── digital_twin_with_failure.json
 |       └── digital_twin.json
 ├── log               # folder where to insert the event log
 ├── src               # source code of proposed approach
 |   ├── downward      # Fast-Downward submodule code
+|   ├── lsha          # LSHA automaton learning submodule (xes_extension branch)
 |   ├── DTLogExtSim   # Digital twin extractor code
 |   |   └── Extractor # Extractor component
 |   ├── uppaal        # UPPAAL verification engine (download separately)
@@ -45,6 +46,7 @@ A more comprehensive video demonstration showcasing the tool in the Lego factory
 |   |   ├── domain.pddl    # Orchestrator PDDL domain
 |   |   └── problem.pddl   # Orchestrator PDDL problem
 |   ├── extractor_outputs  # outputs from the digital twin extractor
+|   ├── automaton_learning.py # SKG extraction with LSHA
 |   ├── chatbot.py         # GUI-based conversational interface
 |   ├── docker_manager.py  # Docker container lifecycle management
 |   ├── pipeline.py        # orchestration pipeline
@@ -86,14 +88,19 @@ Initialize submodules and containers within the repository by running the automa
 ```
 
 This script will:
-- initialize and update git submodules (Fast Downward);
-- build Fast Downward automatically;
+- Initialize and update git submodules (Fast Downward, LSHA);
+- Build Fast Downward automatically;
+- Set up LSHA for SKG (Stochastic Knowledge Graph) extraction;
 - Check for Docker installation (required for Extractor and UPPAAL);
 - Set up and start Docker containers (if Docker and UPPAAL license key are available).
 
-### Python Environment
+### Python Environments
 
 **Requires Python 3.11 or higher.**
+
+The project uses a dual Python environment setup to manage dependency conflicts:
+
+#### Main Environment (venv)
 
 Create a virtual environment in the root folder of the project:
 
@@ -102,10 +109,47 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Run the following command to install the necessary packages along with their dependencies in the `requirements.txt` file using `pip`:
+Install the core framework dependencies:
 
 ``` bash
 pip install -r requirements.txt
+```
+
+This venv is used for the main framework components: conversational layer, simulation, verification orchestration, etc.
+
+#### LSHA Automaton Learning (conda)
+
+LSHA (Stochastic Hybrid Automaton learning) has specific version requirements that conflict with the main framework dependencies, so it uses a separate **conda environment**.
+
+The conda environment is automatically created by the setup script:
+
+``` bash
+./setup_submodules.sh
+```
+
+This creates an `lsha` conda environment with the exact dependencies specified in `src/lsha/environment.yml`, including `skg-connector` and other specific dependencies (e.g., TensorFlow, JAX, Neo4j).
+
+**If conda is not installed**, install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) first:
+
+``` bash
+# Verify conda is available
+conda --version
+```
+
+**Why separate environments?** LSHA requires exact versions of dependencies like TensorFlow, JAX, and Neo4j that would conflict with the main framework's requirements. The conda environment provides dependency isolation, while `automaton_learning.py` automatically invokes LSHA via subprocess, so you typically won't need to manually activate the conda environment.
+
+#### Environment Setup Verification
+
+After running `./setup_submodules.sh`, verify both environments are ready:
+
+``` bash
+# Check main venv
+source .venv/bin/activate
+python --version  # Should be 3.11+
+
+# Check LSHA conda environment
+conda activate lsha
+python -c "import skg_connector; print('SKG Connector:', skg_connector.__version__)"
 ```
 
 Set up a [HuggingFace token](https://huggingface.co/) and/or an [OpenAI API key](https://platform.openai.com/overview) in a `.env` file in the root directory:
@@ -153,7 +197,7 @@ The default parameters are:
 * Gateway LLM: `'gemini-2.5-flash'`;
 * Simulation LLM: `'gemini-2.5-flash'`;
 * Verification LLM: `'gemini-2.5-flash'`;
-* Number of generated tokens: `512`;
+* Number of generated tokens: `32768`;
 * Interaction Modality: `'live'`, i.e., the live chat with the conversational framework.;
 * Extracted model: `False`, i.e., the digital twin for simulation will be extracted from scratch;
 * Extracted model with failure data: `False`, i.e., the digital twin for predictive maintenance will be extracted from scratch.
