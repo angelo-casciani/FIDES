@@ -1,5 +1,5 @@
 # FIDES
-Source code, datasets, and instructions for the paper "*FIDES: A Neuro-Symbolic Conversational Tool for Faithful Production Process Intelligence*".
+Source code, datasets, and instructions for the paper "[FIDES: A Neuro-Symbolic Conversational Tool for Faithful Production Process Intelligence](https://link.springer.com/chapter/10.1007/978-3-032-27997-2_22)".
 
 ## About
 
@@ -223,6 +223,26 @@ Retrive your OpenAI or Gemini API key to use the supported proprietary models.
 
 Please note that each of the selected models have specific requirements in terms of GPU availability.
 It is recommended to have access to a GPU-enabled environment meeting at least the minimum requirements for these models to run the software effectively.
+
+
+## Citation
+
+If you use this repository in your research, please cite:
+
+```bibtex
+@inproceedings{casciani2026fides,
+title = {FIDES: A Neuro-Symbolic Conversational Tool for Faithful Production Process Intelligence},
+author = {Casciani, Angelo and Italia, Fabrizio and Lestingi, Livia and Marinacci, Matteo and Marrella, Andrea and Matta, Andrea},
+booktitle = {Intelligent Information Systems - 38th International Conference, CAiSE 2026, Verona, Italy, June 8-12, 2026, Proceedings},
+series = {Lecture Notes in Business Information Processing},
+volume = {587}
+pages = {194--203},
+doi = {https://doi.org/10.1007/978-3-032-27997-2_22},
+url = {https://link.springer.com/chapter/10.1007/978-3-032-27997-2_22},
+year = {2026},
+publisher = {Springer}
+}
+```
 
 
 ## License
