@@ -233,7 +233,7 @@ If you use this repository in your research, please cite:
 @inproceedings{casciani2026fides,
 title = {FIDES: A Neuro-Symbolic Conversational Tool for Faithful Production Process Intelligence},
 author = {Casciani, Angelo and Italia, Fabrizio and Lestingi, Livia and Marinacci, Matteo and Marrella, Andrea and Matta, Andrea},
-booktitle = {Intelligent Information Systems - 38th International Conference, CAiSE 2026, Verona, Italy, June 8-12, 2026, Proceedings},
+booktitle = {Intelligent Information Systems - 38th International Conference, CAiSE 2026 Forum and Doctoral Consortium, Verona, Italy, June 8–12, 2026, Proceedings},
 series = {Lecture Notes in Business Information Processing},
 volume = {587}
 pages = {194--203},
